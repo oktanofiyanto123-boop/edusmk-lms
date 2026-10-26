@@ -17,6 +17,8 @@ import {
   Network,
   Palette,
   Cpu,
+  Sprout,
+  Zap,
   Layers,
   ChevronRight,
   Check,
@@ -236,8 +238,10 @@ export default function LandingPage() {
             {departments.map((dept) => {
               const icons: Record<string, any> = {
                 RPL: Code2,
-                TKJ: Network,
+                ATPH: Sprout,
                 DKV: Palette,
+                TE: Cpu,
+                TKJ: Sprout,
                 SIJA: Cpu,
               };
               const DeptIcon = icons[dept.code] || BookOpen;

@@ -9,7 +9,7 @@ Platform pembelajaran digital modern, elegan, dan profesional berstandar industr
 ### 1. 🛡️ Administrator Sekolah (`/admin`)
 - **Dashboard Statistik Terpadu**: Pantau total siswa, guru, rombel kelas, materi terbit, dan keaktifan sistem secara *real-time*.
 - **Manajemen Pengguna (User Management)**: Tambah, edit, aktifkan/nonaktifkan akun Guru, Siswa, dan Staf Tata Usaha.
-- **Manajemen Kelas & Jurusan**: Kelola Kompetensi Keahlian (RPL, TKJ, DKV, SIJA) dan Rombongan Belajar beserta penugasan Wali Kelas.
+- **Manajemen Kelas & Jurusan**: Kelola Kompetensi Keahlian (RPL, ATPH, DKV, Teknik Elektronika) dan Rombongan Belajar beserta penugasan Wali Kelas.
 - **Manajemen Mata Pelajaran**: Pengaturan kurikulum kejuruan dan alokasi jam mengajar mingguan.
 - **Audit Materi & Tugas Sekolah**: Tinjau seluruh materi dan tugas yang diterbitkan guru di semua kelas.
 - **Pengumuman Resmi Sekolah**: Publikasi surat edaran dan pengumuman dengan opsi *pinned* di dashboard.

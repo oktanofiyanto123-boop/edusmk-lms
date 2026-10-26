@@ -118,8 +118,8 @@ export default function AdminDashboardPage() {
             <div>
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Jurusan Kejuruan</p>
               <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{departments.length}</p>
-              <p className="text-[11px] text-purple-600 dark:text-purple-400 flex items-center gap-1 mt-1">
-                <span>RPL, TKJ, DKV, SIJA</span>
+              <p className="text-[11px] text-purple-600 dark:text-purple-400 flex items-center gap-1 mt-1 font-semibold">
+                <span>{departments.map((d) => d.code).join(', ')}</span>
               </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 flex items-center justify-center">

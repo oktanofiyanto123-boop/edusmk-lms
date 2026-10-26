@@ -12,7 +12,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'EduSMK — Learning Management System (LMS) Kejuruan Digital',
   description: 'Platform pembelajaran digital resmi untuk Sekolah Menengah Kejuruan (SMK) berstandar industri dengan materi interaktif, tugas, kuis, dan penilaian terintegrasi.',
-  keywords: ['EduSMK', 'LMS SMK', 'Pembelajaran Kejuruan', 'RPL', 'TKJ', 'DKV', 'Next.js LMS'],
+  keywords: ['EduSMK', 'LMS SMK', 'Pembelajaran Kejuruan', 'RPL', 'ATPH', 'DKV', 'Teknik Elektronika', 'Next.js LMS'],
   authors: [{ name: 'EduSMK Engineering Team' }],
   icons: {
     icon: '/favicon.ico',

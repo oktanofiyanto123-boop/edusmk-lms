@@ -171,7 +171,7 @@ export default function AdminClassesPage() {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Contoh: XII RPL 3 atau X TKJ 2"
+                    placeholder="Contoh: XII RPL 3 atau X ATPH 2"
                     className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                   />
                 </div>
