@@ -234,15 +234,13 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {departments.map((dept) => {
               const icons: Record<string, any> = {
-                RPL: Code2,
                 ATPH: Sprout,
-                DKV: Palette,
                 TE: Cpu,
-                TKJ: Sprout,
-                SIJA: Cpu,
+                DKV: Palette,
+                RPL: Code2,
               };
               const DeptIcon = icons[dept.code] || BookOpen;
 

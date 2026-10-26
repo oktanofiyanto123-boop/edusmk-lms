@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 2. DEPARTMENTS TABLE (Jurusan SMK: RPL, ATPH, DKV, TE, dll.)
+-- 2. DEPARTMENTS TABLE (Jurusan SMK: ATPH, TE, DKV, dll.)
 CREATE TABLE IF NOT EXISTS public.departments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     code TEXT NOT NULL UNIQUE,
