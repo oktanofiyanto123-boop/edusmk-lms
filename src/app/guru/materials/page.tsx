@@ -4,13 +4,14 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useLms } from '@/lib/store';
-import { FileText, Plus, Search, Trash2, Eye, Video, File, CheckCircle2, Clock } from 'lucide-react';
+import { FileText, Plus, Search, Trash2, Eye, Video, File, CheckCircle2, Clock, Edit3, Cpu, Sprout } from 'lucide-react';
 import { formatDate, getStatusBadge } from '@/lib/utils';
 import { PublicationStatus } from '@/lib/types';
 
 export default function GuruMaterialsPage() {
-  const { materials, deleteMaterial, updateMaterial, currentUser } = useLms();
+  const { materials, deleteMaterial, updateMaterial, subjects, currentUser } = useLms();
   const [filter, setFilter] = useState<'all' | PublicationStatus>('all');
+  const [selectedDept, setSelectedDept] = useState<'all' | 'dept-te' | 'dept-atph' | 'dept-dkv'>('all');
   const [search, setSearch] = useState('');
 
   const myMaterials = materials.filter(
@@ -21,8 +22,13 @@ export default function GuruMaterialsPage() {
     const matchStatus = filter === 'all' || m.status === filter;
     const matchSearch =
       m.title.toLowerCase().includes(search.toLowerCase()) ||
-      m.subject_name?.toLowerCase().includes(search.toLowerCase());
-    return matchStatus && matchSearch;
+      m.subject_name?.toLowerCase().includes(search.toLowerCase()) ||
+      m.class_name?.toLowerCase().includes(search.toLowerCase());
+    
+    const subject = subjects.find((s) => s.id === m.subject_id);
+    const matchDept = selectedDept === 'all' || subject?.department_id === selectedDept;
+
+    return matchStatus && matchSearch && matchDept;
   });
 
   const handleStatusChange = (id: string, newStatus: PublicationStatus) => {
@@ -35,23 +41,72 @@ export default function GuruMaterialsPage() {
       subtitle="Publikasikan Modul Kejuruan, Video Praktik, dan Panduan Praktikum"
     >
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+        {/* Jurusan & Mapel Quick Filter */}
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            <button
+              onClick={() => setSelectedDept('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                selectedDept === 'all'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              Semua Jurusan
+            </button>
+            <button
+              onClick={() => setSelectedDept('dept-te')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                selectedDept === 'dept-te'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/60'
+              }`}
+            >
+              <Cpu className="w-3.5 h-3.5" />
+              <span>Teknik Elektronika (TE)</span>
+            </button>
+            <button
+              onClick={() => setSelectedDept('dept-atph')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                selectedDept === 'dept-atph'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/60'
+              }`}
+            >
+              <Sprout className="w-3.5 h-3.5" />
+              <span>Agribisnis (ATPH)</span>
+            </button>
+            <button
+              onClick={() => setSelectedDept('dept-dkv')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                selectedDept === 'dept-dkv'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/60'
+              }`}
+            >
+              🎨 DKV
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5">
             {(['all', 'published', 'draft', 'archived'] as const).map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-all ${
                   filter === status
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
+                    ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                {status === 'all' ? 'Semua Status' : status === 'published' ? 'Terbit' : status === 'draft' ? 'Draf' : 'Arsip'}
+                {status === 'all' ? 'Semua' : status === 'published' ? 'Terbit' : status === 'draft' ? 'Draf' : 'Arsip'}
               </button>
             ))}
           </div>
+        </div>
 
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <p className="text-xs text-slate-500">{filtered.length} Modul Pembelajaran Ditemukan</p>
           <div className="flex items-center gap-3">
             <div className="relative sm:w-64">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -140,15 +195,26 @@ export default function GuruMaterialsPage() {
                       <span>Lihat Siswa</span>
                     </Link>
 
-                    <button
-                      onClick={() => {
-                        if (confirm(`Hapus materi: ${mat.title}?`)) deleteMaterial(mat.id);
-                      }}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950"
-                      title="Hapus Materi"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/guru/materials/${mat.id}/edit`}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all"
+                        title="Buka Editor Modul"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit Modul</span>
+                      </Link>
+
+                      <button
+                        onClick={() => {
+                          if (confirm(`Hapus materi: ${mat.title}?`)) deleteMaterial(mat.id);
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950"
+                        title="Hapus Materi"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
