@@ -91,3 +91,70 @@ export function calculateGrade(score: number): { letter: 'A' | 'B' | 'C' | 'D' |
   if (score >= 60) return { letter: 'D', tuntas: false };
   return { letter: 'E', tuntas: false };
 }
+
+export function getFileCategoryInfo(fileName: string) {
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+
+  if (['pdf'].includes(ext)) {
+    return {
+      category: 'pdf',
+      label: 'PDF Dokumen',
+      badgeClass: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border-rose-200 dark:border-rose-900',
+      iconClass: 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400',
+    };
+  }
+  if (['doc', 'docx', 'odt', 'rtf'].includes(ext)) {
+    return {
+      category: 'word',
+      label: 'Word Dokumen',
+      badgeClass: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-900',
+      iconClass: 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400',
+    };
+  }
+  if (['ppt', 'pptx', 'odp'].includes(ext)) {
+    return {
+      category: 'ppt',
+      label: 'Slide Presentasi PPT',
+      badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-900',
+      iconClass: 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400',
+    };
+  }
+  if (['xls', 'xlsx', 'csv', 'ods'].includes(ext)) {
+    return {
+      category: 'excel',
+      label: 'Spreadsheet Excel',
+      badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900',
+      iconClass: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400',
+    };
+  }
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+    return {
+      category: 'archive',
+      label: 'Arsip Terkompresi ZIP/RAR',
+      badgeClass: 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border-purple-200 dark:border-purple-900',
+      iconClass: 'bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400',
+    };
+  }
+  if (['c', 'cpp', 'h', 'hpp', 'ino', 'py', 'java', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'json', 'php', 'sql', 'sh', 'hex', 'bin'].includes(ext)) {
+    return {
+      category: 'code',
+      label: 'Source Code / Proyek Kejuruan',
+      badgeClass: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300 border-cyan-200 dark:border-cyan-900',
+      iconClass: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-950/60 dark:text-cyan-400',
+    };
+  }
+  if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'psd', 'ai'].includes(ext)) {
+    return {
+      category: 'image',
+      label: 'Berkas Desain / Gambar',
+      badgeClass: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900',
+      iconClass: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400',
+    };
+  }
+  return {
+    category: 'other',
+    label: ext ? `Berkas .${ext.toUpperCase()}` : 'Berkas Tugas',
+    badgeClass: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+    iconClass: 'bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+  };
+}

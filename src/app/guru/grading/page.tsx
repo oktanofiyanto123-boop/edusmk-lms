@@ -17,7 +17,7 @@ import {
   MessageSquare,
   FileText,
 } from 'lucide-react';
-import { formatDateTime, getStatusBadge } from '@/lib/utils';
+import { formatDateTime, getStatusBadge, getFileCategoryInfo } from '@/lib/utils';
 import { Submission } from '@/lib/types';
 
 function GuruGradingContent() {
@@ -181,24 +181,39 @@ function GuruGradingContent() {
                   {selectedSubmission.content || 'Siswa tidak menyertakan teks keterangan tambahan.'}
                 </p>
 
-                {selectedSubmission.file_name && (
-                  <div className="flex items-center justify-between p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-blue-600" />
-                      <span className="font-medium text-slate-800 dark:text-slate-200">{selectedSubmission.file_name}</span>
-                      <span className="text-[10px] text-slate-400">({selectedSubmission.file_size || '3.2 MB'})</span>
+                {selectedSubmission.file_name && (() => {
+                  const fileInfo = getFileCategoryInfo(selectedSubmission.file_name);
+                  return (
+                    <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${fileInfo.iconClass}`}>
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 dark:text-white truncate text-xs">
+                            {selectedSubmission.file_name}
+                          </p>
+                          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
+                            <span className={`px-1.5 py-0.2 rounded font-mono font-bold uppercase border ${fileInfo.badgeClass}`}>
+                              {fileInfo.label}
+                            </span>
+                            <span>•</span>
+                            <span>{selectedSubmission.file_size || 'Berkas Terlampir'}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <a
+                        href={selectedSubmission.file_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-colors shadow-2xs"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Unduh Berkas</span>
+                      </a>
                     </div>
-                    <a
-                      href={selectedSubmission.file_url || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Unduh File</span>
-                    </a>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
 
               {/* Form Input Nilai & Umpan Balik */}

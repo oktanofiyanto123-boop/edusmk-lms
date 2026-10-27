@@ -24,6 +24,8 @@ import {
   Flame,
   HelpCircle,
   Sparkles,
+  Presentation,
+  ExternalLink,
 } from 'lucide-react';
 import { PublicationStatus, SubChapter, MaterialAttachment } from '@/lib/types';
 import Link from 'next/link';
@@ -193,22 +195,62 @@ void loop() {
     setSubchapters(subchapters.filter((s) => s.id !== id));
   };
 
-  const handleAddAttachment = () => {
-    if (newFileName.trim()) {
-      const newAtt: MaterialAttachment = {
-        id: `att-${Date.now()}`,
-        file_name: newFileName.trim(),
-        file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-        file_type: newFileType,
-        file_size: '2.5 MB',
-      };
-      setAttachments([...attachments, newAtt]);
-      setNewFileName('');
-    }
+  const handleFileUpload = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const newItems: MaterialAttachment[] = [];
+    Array.from(files).forEach((file) => {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      let fileType: MaterialAttachment['file_type'] = 'other';
+      if (ext === 'pdf') fileType = 'pdf';
+      else if (['ppt', 'pptx'].includes(ext)) fileType = 'ppt';
+      else if (['doc', 'docx'].includes(ext)) fileType = 'doc';
+      else if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) fileType = 'image';
+
+      const sizeMb = file.size / (1024 * 1024);
+      const sizeStr = sizeMb >= 1 ? `${sizeMb.toFixed(1)} MB` : `${Math.round(file.size / 1024)} KB`;
+      const url = URL.createObjectURL(file);
+
+      newItems.push({
+        id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+        file_name: file.name,
+        file_url: url,
+        file_type: fileType,
+        file_size: sizeStr,
+      });
+    });
+    setAttachments((prev) => [...prev, ...newItems]);
+  };
+
+  const handleAddSamplePdf = () => {
+    const sample: MaterialAttachment = {
+      id: `att-${Date.now()}`,
+      file_name: 'Modul_Panduan_Praktik_Kejuruan.pdf',
+      file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      file_type: 'pdf',
+      file_size: '3.4 MB',
+    };
+    setAttachments((prev) => [...prev, sample]);
+  };
+
+  const handleAddSamplePpt = () => {
+    const sample: MaterialAttachment = {
+      id: `att-${Date.now()}`,
+      file_name: 'Slide_Presentasi_Materi_Teori.pptx',
+      file_url: 'https://view.officeapps.live.com/op/view.aspx?src=https%3A%2F%2Ffile-examples.com%2Fstorage%2Ffe8c279c1664bf87b8f9e61%2F2017%2F08%2Ffile_example_PPT_1MB.ppt',
+      file_type: 'ppt',
+      file_size: '5.2 MB',
+    };
+    setAttachments((prev) => [...prev, sample]);
   };
 
   const handleRemoveAttachment = (id: string) => {
-    setAttachments(attachments.filter((a) => a.id !== id));
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const getYouTubeEmbedUrl = (url: string) => {
+    if (!url) return null;
+    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+    return match ? `https://www.youtube.com/embed/${match[1]}` : null;
   };
 
   const handleSave = (targetStatus?: PublicationStatus) => {
@@ -650,65 +692,123 @@ void loop() {
             {/* 5. Video Praktikum & Lampiran */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* YouTube Video URL */}
-              <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-                <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                  <Video className="w-4 h-4 text-rose-500" />
-                  <span>Video Demonstrasi Praktikum (YouTube)</span>
-                </h2>
+              <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                    <Video className="w-4 h-4 text-rose-500" />
+                    <span>Video Demonstrasi Praktikum (YouTube)</span>
+                  </h2>
+                  {getYouTubeEmbedUrl(youtubeUrl) && (
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                      Aktif
+                    </span>
+                  )}
+                </div>
+
                 <input
                   type="url"
                   value={youtubeUrl}
                   onChange={(e) => setYoutubeUrl(e.target.value)}
-                  placeholder="https://www.youtube.com/watch?v=..."
-                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  placeholder="https://www.youtube.com/watch?v=... atau https://youtu.be/..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500 focus:outline-none"
                 />
-                <p className="text-[11px] text-slate-400">
-                  Video akan disematkan langsung di modul belajar siswa untuk memandu praktikum laboratorium atau greenhouse.
-                </p>
+
+                {getYouTubeEmbedUrl(youtubeUrl) && (
+                  <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 aspect-video w-full bg-black">
+                    <iframe
+                      src={getYouTubeEmbedUrl(youtubeUrl)!}
+                      title="Preview Video Praktikum"
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Lampiran Dokumen */}
-              <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-                <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                  <UploadCloud className="w-4 h-4 text-blue-500" />
-                  <span>Lampiran Dokumen ({attachments.length})</span>
-                </h2>
-
-                <div className="space-y-2">
-                  {attachments.map((att) => (
-                    <div
-                      key={att.id}
-                      className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800 text-xs border border-slate-100 dark:border-slate-700"
-                    >
-                      <span className="font-medium text-slate-800 dark:text-slate-200 line-clamp-1">
-                        {att.file_name} ({att.file_size})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveAttachment(att.id)}
-                        className="p-1 text-slate-400 hover:text-rose-600"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newFileName}
-                      onChange={(e) => setNewFileName(e.target.value)}
-                      placeholder="Nama file (contoh: Panduan_Praktikum_ESP32.pdf)..."
-                      className="flex-1 p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
-                    />
+              <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                    <UploadCloud className="w-4 h-4 text-emerald-500" />
+                    <span>Upload Modul (PDF / PPT) ({attachments.length})</span>
+                  </h2>
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={handleAddAttachment}
-                      className="px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold"
+                      onClick={handleAddSamplePdf}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 hover:bg-rose-100"
                     >
-                      Lampirkan
+                      + PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddSamplePpt}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 hover:bg-amber-100"
+                    >
+                      + PPT
                     </button>
                   </div>
+                </div>
+
+                {/* Upload Input & Drop Area */}
+                <label className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-emerald-500/60 rounded-xl p-4 text-center cursor-pointer block bg-slate-50/50 dark:bg-slate-800/40 transition-colors">
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.ppt,.pptx,application/pdf,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,.doc,.docx"
+                    onChange={(e) => handleFileUpload(e.target.files)}
+                    className="hidden"
+                  />
+                  <UploadCloud className="w-6 h-6 text-emerald-600 dark:text-emerald-400 mx-auto mb-1" />
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Klik untuk Pilih File PDF atau Slide PPT
+                  </p>
+                  <p className="text-[10px] text-slate-400">Mendukung format .pdf, .ppt, .pptx, .docx</p>
+                </label>
+
+                {/* Attached items */}
+                <div className="space-y-2">
+                  {attachments.map((att) => {
+                    const isPdf = att.file_type === 'pdf' || att.file_name.toLowerCase().endsWith('.pdf');
+                    const isPpt =
+                      att.file_type === 'ppt' ||
+                      att.file_name.toLowerCase().endsWith('.ppt') ||
+                      att.file_name.toLowerCase().endsWith('.pptx');
+
+                    return (
+                      <div
+                        key={att.id}
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs border border-slate-100 dark:border-slate-700"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                              isPdf
+                                ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                                : isPpt
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                                : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+                            }`}
+                          >
+                            {isPdf ? 'PDF' : isPpt ? 'PPT' : att.file_type}
+                          </span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                            {att.file_name}
+                          </span>
+                          <span className="text-[10px] text-slate-400">({att.file_size})</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAttachment(att.id)}
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950"
+                          title="Hapus Lampiran"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

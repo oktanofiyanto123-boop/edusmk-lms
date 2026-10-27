@@ -80,7 +80,7 @@ export interface MaterialAttachment {
   material_id?: string;
   file_name: string;
   file_url: string;
-  file_type: 'pdf' | 'image' | 'doc' | 'video' | 'archive' | 'other';
+  file_type: 'pdf' | 'ppt' | 'image' | 'doc' | 'video' | 'archive' | 'other';
   file_size: string;
 }
 
