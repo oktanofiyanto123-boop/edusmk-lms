@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   UserProfile,
   Department,
@@ -31,6 +31,8 @@ import {
   INITIAL_GRADES,
   INITIAL_ANNOUNCEMENTS,
 } from './mock-data';
+import { isSupabaseConfigured } from './supabase/client';
+import * as db from './supabase/supabase-service';
 
 interface LmsContextType {
   currentUser: UserProfile;
@@ -42,6 +44,7 @@ interface LmsContextType {
   addUser: (user: Omit<UserProfile, 'id' | 'created_at'>) => void;
   updateUser: (id: string, updates: Partial<UserProfile>) => void;
   deleteUser: (id: string) => void;
+  changePassword: (studentId: string, newPassword: string) => void;
   departments: Department[];
   classes: ClassRoom[];
   addClass: (cls: Omit<ClassRoom, 'id'>) => void;
@@ -75,6 +78,8 @@ interface LmsContextType {
   learningProgress: LearningProgress[];
   toggleMaterialCompleted: (materialId: string, studentId: string) => void;
   resetAllData: () => void;
+  isLoading: boolean;
+  isOnline: boolean;
 }
 
 const LmsContext = createContext<LmsContextType | null>(null);
@@ -82,8 +87,10 @@ const LmsContext = createContext<LmsContextType | null>(null);
 const STORAGE_KEY = 'edusmk_lms_v1_store';
 
 export function LmsProvider({ children }: { children: React.ReactNode }) {
-  // Current user state
-  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USERS[0]); // default admin
+  const [isLoading, setIsLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(false);
+
+  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USERS[0]);
   const [schoolSettings, setSchoolSettings] = useState<SchoolSettings>(INITIAL_SCHOOL_SETTINGS);
   const [users, setUsers] = useState<UserProfile[]>(INITIAL_USERS);
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DEPARTMENTS);
@@ -100,36 +107,127 @@ export function LmsProvider({ children }: { children: React.ReactNode }) {
     { id: 'lp-1', student_id: 'user-siswa-1', material_id: 'mat-01', is_completed: true, completed_at: '2026-02-12T16:00:00Z' },
   ]);
 
-  // Load from localStorage on mount
+  // ── LOAD DATA ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.users) setUsers(parsed.users);
-        if (parsed.classes) setClasses(parsed.classes);
-        if (parsed.subjects) setSubjects(parsed.subjects);
-        if (parsed.materials) setMaterials(parsed.materials);
-        if (parsed.assignments) setAssignments(parsed.assignments);
-        if (parsed.submissions) setSubmissions(parsed.submissions);
-        if (parsed.quizzes) setQuizzes(parsed.quizzes);
-        if (parsed.quizAttempts) setQuizAttempts(parsed.quizAttempts);
-        if (parsed.grades) setGrades(parsed.grades);
-        if (parsed.announcements) setAnnouncements(parsed.announcements);
-        if (parsed.learningProgress) setLearningProgress(parsed.learningProgress);
-        if (parsed.schoolSettings) setSchoolSettings(parsed.schoolSettings);
-        if (parsed.currentUserId) {
-          const user = parsed.users?.find((u: UserProfile) => u.id === parsed.currentUserId);
-          if (user) setCurrentUser(user);
+    async function loadData() {
+      setIsLoading(true);
+
+      if (isSupabaseConfigured()) {
+        // ✅ SUPABASE MODE: Data dari database terpusat
+        try {
+          const [
+            dbUsers,
+            dbClasses,
+            dbSubjects,
+            dbMaterials,
+            dbAssignments,
+            dbSubmissions,
+            dbQuizzes,
+            dbAttempts,
+            dbGrades,
+            dbAnnouncements,
+            dbProgress,
+            dbSettings,
+          ] = await Promise.all([
+            db.fetchProfiles(),
+            db.fetchClassrooms(),
+            db.fetchSubjects(),
+            db.fetchMaterials(),
+            db.fetchAssignments(),
+            db.fetchSubmissions(),
+            db.fetchQuizzes(),
+            db.fetchQuizAttempts(),
+            db.fetchGrades(),
+            db.fetchAnnouncements(),
+            db.fetchLearningProgress(),
+            db.fetchSchoolSettings(),
+          ]);
+
+          if (dbUsers.length > 0) {
+            setUsers(dbUsers);
+            const savedUserId = typeof window !== 'undefined' ? localStorage.getItem('edusmk_current_user_id') : null;
+            if (savedUserId) {
+              const matched = dbUsers.find((u) => u.id === savedUserId);
+              if (matched) setCurrentUser(matched);
+            }
+          }
+          if (dbClasses.length > 0) setClasses(dbClasses);
+          if (dbSubjects.length > 0) setSubjects(dbSubjects);
+          if (dbMaterials.length > 0) setMaterials(dbMaterials);
+          if (dbAssignments.length > 0) setAssignments(dbAssignments);
+          if (dbSubmissions.length > 0) setSubmissions(dbSubmissions);
+          if (dbQuizzes.length > 0) setQuizzes(dbQuizzes);
+          if (dbAttempts.length > 0) setQuizAttempts(dbAttempts);
+          if (dbGrades.length > 0) setGrades(dbGrades);
+          if (dbAnnouncements.length > 0) setAnnouncements(dbAnnouncements);
+          if (dbProgress.length > 0) setLearningProgress(dbProgress);
+          if (dbSettings) setSchoolSettings(dbSettings);
+
+          setIsOnline(true);
+        } catch (err) {
+          console.error('Gagal memuat data dari Supabase, fallback ke localStorage:', err);
+          loadFromLocalStorage();
         }
+      } else {
+        // ⚠️ OFFLINE MODE: Data dari localStorage (per-device)
+        loadFromLocalStorage();
       }
-    } catch {
-      // Ignore parse errors and keep defaults
+
+      setIsLoading(false);
     }
+
+    function loadFromLocalStorage() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.users && Array.isArray(parsed.users)) {
+            const sanitizedUsers: UserProfile[] = parsed.users.map((u: UserProfile) => {
+              if (u.role === 'siswa') {
+                return { ...u, password: u.password || 'siswa123', email: undefined };
+              }
+              return { ...u, password: u.password || (u.role === 'admin' ? 'admin123' : 'guru123') };
+            });
+            setUsers(sanitizedUsers);
+          }
+          if (parsed.classes) setClasses(parsed.classes);
+          if (parsed.subjects) setSubjects(parsed.subjects);
+          if (parsed.materials) setMaterials(parsed.materials);
+          if (parsed.assignments) setAssignments(parsed.assignments);
+          if (parsed.submissions) setSubmissions(parsed.submissions);
+          if (parsed.quizzes) setQuizzes(parsed.quizzes);
+          if (parsed.quizAttempts) setQuizAttempts(parsed.quizAttempts);
+          if (parsed.grades) setGrades(parsed.grades);
+          if (parsed.announcements) setAnnouncements(parsed.announcements);
+          if (parsed.learningProgress) setLearningProgress(parsed.learningProgress);
+          if (parsed.schoolSettings) setSchoolSettings(parsed.schoolSettings);
+          if (parsed.currentUserId) {
+            const user = parsed.users?.find((u: UserProfile) => u.id === parsed.currentUserId);
+            if (user) setCurrentUser(user);
+          }
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+
+    loadData();
   }, []);
 
-  // Save to localStorage on changes
-  const saveState = (updatedState: Record<string, any>) => {
+  const handleSetCurrentUser = (user: UserProfile) => {
+    setCurrentUser(user);
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('edusmk_current_user_id', user.id);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  // ── SAVE HELPERS ──────────────────────────────────────────────────────────
+  const saveState = useCallback((updatedState: Record<string, any>) => {
+    if (isOnline) return; // Supabase mode: jangan pakai localStorage
     try {
       const currentFull = {
         users,
@@ -149,46 +247,61 @@ export function LmsProvider({ children }: { children: React.ReactNode }) {
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(currentFull));
     } catch {
-      // ignore storage quota error
+      // ignore storage quota
     }
-  };
+  }, [isOnline, users, classes, subjects, materials, assignments, submissions, quizzes, quizAttempts, grades, announcements, learningProgress, schoolSettings, currentUser.id]);
 
+  // ── AUTH ──────────────────────────────────────────────────────────────────
   const switchRole = (role: UserRole) => {
     const targetUser = users.find((u) => u.role === role) || INITIAL_USERS.find((u) => u.role === role);
     if (targetUser) {
       setCurrentUser(targetUser);
-      saveState({ currentUserId: targetUser.id });
+      if (!isOnline) saveState({ currentUserId: targetUser.id });
     }
   };
 
+  // ── SCHOOL SETTINGS ────────────────────────────────────────────────────────
   const updateSchoolSettings = (newSettings: Partial<SchoolSettings>) => {
     setSchoolSettings((prev) => {
       const updated = { ...prev, ...newSettings };
-      saveState({ schoolSettings: updated });
+      if (isOnline) {
+        db.upsertSchoolSettings(updated).catch(console.error);
+      } else {
+        saveState({ schoolSettings: updated });
+      }
       return updated;
     });
   };
 
+  // ── USERS ─────────────────────────────────────────────────────────────────
   const addUser = (userData: Omit<UserProfile, 'id' | 'created_at'>) => {
-    const newUser: UserProfile = {
-      ...userData,
-      id: `user-${Date.now()}`,
-      created_at: new Date().toISOString(),
-    };
-    setUsers((prev) => {
-      const updated = [newUser, ...prev];
-      saveState({ users: updated });
-      return updated;
-    });
+    if (isOnline) {
+      db.insertProfile(userData).then((newUser) => {
+        setUsers((prev) => [newUser, ...prev]);
+      }).catch(console.error);
+    } else {
+      const newUser: UserProfile = {
+        ...userData,
+        id: `user-${Date.now()}`,
+        created_at: new Date().toISOString(),
+      };
+      setUsers((prev) => {
+        const updated = [newUser, ...prev];
+        saveState({ users: updated });
+        return updated;
+      });
+    }
   };
 
   const updateUser = (id: string, updates: Partial<UserProfile>) => {
     setUsers((prev) => {
       const updated = prev.map((u) => (u.id === id ? { ...u, ...updates, updated_at: new Date().toISOString() } : u));
-      saveState({ users: updated });
-      if (currentUser.id === id) {
-        setCurrentUser((curr) => ({ ...curr, ...updates }));
+      if (isOnline) {
+        db.updateProfile(id, updates).catch(console.error);
+      } else {
+        saveState({ users: updated });
       }
+      if (currentUser.id === id) setCurrentUser((curr) => ({ ...curr, ...updates }));
       return updated;
     });
   };
@@ -196,27 +309,53 @@ export function LmsProvider({ children }: { children: React.ReactNode }) {
   const deleteUser = (id: string) => {
     setUsers((prev) => {
       const updated = prev.filter((u) => u.id !== id);
-      saveState({ users: updated });
+      if (isOnline) {
+        db.deleteProfile(id).catch(console.error);
+      } else {
+        saveState({ users: updated });
+      }
       return updated;
     });
   };
 
-  const addClass = (clsData: Omit<ClassRoom, 'id'>) => {
-    const newClass: ClassRoom = {
-      ...clsData,
-      id: `class-${Date.now()}`,
-    };
-    setClasses((prev) => {
-      const updated = [...prev, newClass];
-      saveState({ classes: updated });
+  const changePassword = (studentId: string, newPassword: string) => {
+    setUsers((prev) => {
+      const updated = prev.map((u) =>
+        u.id === studentId ? { ...u, password: newPassword, updated_at: new Date().toISOString() } : u
+      );
+      if (isOnline) {
+        db.changeProfilePassword(studentId, newPassword).catch(console.error);
+      } else {
+        saveState({ users: updated });
+      }
       return updated;
     });
+  };
+
+  // ── CLASSES ───────────────────────────────────────────────────────────────
+  const addClass = (clsData: Omit<ClassRoom, 'id'>) => {
+    if (isOnline) {
+      db.insertClassroom(clsData).then((newClass) => {
+        setClasses((prev) => [...prev, newClass]);
+      }).catch(console.error);
+    } else {
+      const newClass: ClassRoom = { ...clsData, id: `class-${Date.now()}` };
+      setClasses((prev) => {
+        const updated = [...prev, newClass];
+        saveState({ classes: updated });
+        return updated;
+      });
+    }
   };
 
   const updateClass = (id: string, updates: Partial<ClassRoom>) => {
     setClasses((prev) => {
       const updated = prev.map((c) => (c.id === id ? { ...c, ...updates } : c));
-      saveState({ classes: updated });
+      if (isOnline) {
+        db.updateClassroom(id, updates).catch(console.error);
+      } else {
+        saveState({ classes: updated });
+      }
       return updated;
     });
   };
@@ -224,27 +363,39 @@ export function LmsProvider({ children }: { children: React.ReactNode }) {
   const deleteClass = (id: string) => {
     setClasses((prev) => {
       const updated = prev.filter((c) => c.id !== id);
-      saveState({ classes: updated });
+      if (isOnline) {
+        db.deleteClassroom(id).catch(console.error);
+      } else {
+        saveState({ classes: updated });
+      }
       return updated;
     });
   };
 
+  // ── SUBJECTS ──────────────────────────────────────────────────────────────
   const addSubject = (subData: Omit<Subject, 'id'>) => {
-    const newSub: Subject = {
-      ...subData,
-      id: `sub-${Date.now()}`,
-    };
-    setSubjects((prev) => {
-      const updated = [...prev, newSub];
-      saveState({ subjects: updated });
-      return updated;
-    });
+    if (isOnline) {
+      db.insertSubject(subData).then((newSub) => {
+        setSubjects((prev) => [...prev, newSub]);
+      }).catch(console.error);
+    } else {
+      const newSub: Subject = { ...subData, id: `sub-${Date.now()}` };
+      setSubjects((prev) => {
+        const updated = [...prev, newSub];
+        saveState({ subjects: updated });
+        return updated;
+      });
+    }
   };
 
   const updateSubject = (id: string, updates: Partial<Subject>) => {
     setSubjects((prev) => {
       const updated = prev.map((s) => (s.id === id ? { ...s, ...updates } : s));
-      saveState({ subjects: updated });
+      if (isOnline) {
+        db.updateSubject(id, updates).catch(console.error);
+      } else {
+        saveState({ subjects: updated });
+      }
       return updated;
     });
   };
@@ -252,31 +403,44 @@ export function LmsProvider({ children }: { children: React.ReactNode }) {
   const deleteSubject = (id: string) => {
     setSubjects((prev) => {
       const updated = prev.filter((s) => s.id !== id);
-      saveState({ subjects: updated });
+      if (isOnline) {
+        db.deleteSubject(id).catch(console.error);
+      } else {
+        saveState({ subjects: updated });
+      }
       return updated;
     });
   };
 
+  // ── MATERIALS ─────────────────────────────────────────────────────────────
   const addMaterial = (matData: Omit<TeachingMaterial, 'id' | 'created_at' | 'updated_at'>) => {
-    const newMat: TeachingMaterial = {
-      ...matData,
-      id: `mat-${Date.now()}`,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    setMaterials((prev) => {
-      const updated = [newMat, ...prev];
-      saveState({ materials: updated });
-      return updated;
-    });
+    if (isOnline) {
+      db.insertMaterial(matData).then((newMat) => {
+        setMaterials((prev) => [newMat, ...prev]);
+      }).catch(console.error);
+    } else {
+      const newMat: TeachingMaterial = {
+        ...matData,
+        id: `mat-${Date.now()}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setMaterials((prev) => {
+        const updated = [newMat, ...prev];
+        saveState({ materials: updated });
+        return updated;
+      });
+    }
   };
 
   const updateMaterial = (id: string, updates: Partial<TeachingMaterial>) => {
     setMaterials((prev) => {
-      const updated = prev.map((m) =>
-        m.id === id ? { ...m, ...updates, updated_at: new Date().toISOString() } : m
-      );
-      saveState({ materials: updated });
+      const updated = prev.map((m) => (m.id === id ? { ...m, ...updates, updated_at: new Date().toISOString() } : m));
+      if (isOnline) {
+        db.updateMaterial(id, updates).catch(console.error);
+      } else {
+        saveState({ materials: updated });
+      }
       return updated;
     });
   };
@@ -284,30 +448,45 @@ export function LmsProvider({ children }: { children: React.ReactNode }) {
   const deleteMaterial = (id: string) => {
     setMaterials((prev) => {
       const updated = prev.filter((m) => m.id !== id);
-      saveState({ materials: updated });
+      if (isOnline) {
+        db.deleteMaterial(id).catch(console.error);
+      } else {
+        saveState({ materials: updated });
+      }
       return updated;
     });
   };
 
+  // ── ASSIGNMENTS ───────────────────────────────────────────────────────────
   const addAssignment = (asgData: Omit<Assignment, 'id' | 'created_at'>) => {
-    const newAsg: Assignment = {
-      ...asgData,
-      id: `asg-${Date.now()}`,
-      created_at: new Date().toISOString(),
-      submitted_count: 0,
-      total_students: 36,
-    };
-    setAssignments((prev) => {
-      const updated = [newAsg, ...prev];
-      saveState({ assignments: updated });
-      return updated;
-    });
+    if (isOnline) {
+      db.insertAssignment(asgData).then((newAsg) => {
+        setAssignments((prev) => [newAsg, ...prev]);
+      }).catch(console.error);
+    } else {
+      const newAsg: Assignment = {
+        ...asgData,
+        id: `asg-${Date.now()}`,
+        created_at: new Date().toISOString(),
+        submitted_count: 0,
+        total_students: 36,
+      };
+      setAssignments((prev) => {
+        const updated = [newAsg, ...prev];
+        saveState({ assignments: updated });
+        return updated;
+      });
+    }
   };
 
   const updateAssignment = (id: string, updates: Partial<Assignment>) => {
     setAssignments((prev) => {
       const updated = prev.map((a) => (a.id === id ? { ...a, ...updates } : a));
-      saveState({ assignments: updated });
+      if (isOnline) {
+        db.updateAssignment(id, updates).catch(console.error);
+      } else {
+        saveState({ assignments: updated });
+      }
       return updated;
     });
   };
@@ -315,124 +494,144 @@ export function LmsProvider({ children }: { children: React.ReactNode }) {
   const deleteAssignment = (id: string) => {
     setAssignments((prev) => {
       const updated = prev.filter((a) => a.id !== id);
-      saveState({ assignments: updated });
+      if (isOnline) {
+        db.deleteAssignment(id).catch(console.error);
+      } else {
+        saveState({ assignments: updated });
+      }
       return updated;
     });
   };
 
+  // ── SUBMISSIONS ───────────────────────────────────────────────────────────
   const submitAssignment = (submData: Omit<Submission, 'id' | 'submitted_at' | 'status'>) => {
-    const isLate = false;
-    const existingIndex = submissions.findIndex(
-      (s) => s.assignment_id === submData.assignment_id && s.student_id === submData.student_id
-    );
-
-    let updatedSubmissions: Submission[];
-    if (existingIndex >= 0) {
-      updatedSubmissions = [...submissions];
-      updatedSubmissions[existingIndex] = {
-        ...updatedSubmissions[existingIndex],
-        ...submData,
-        submitted_at: new Date().toISOString(),
-        status: isLate ? 'terlambat' : 'sudah_dikumpulkan',
-      };
+    if (isOnline) {
+      db.upsertSubmission(submData).then((newSubm) => {
+        setSubmissions((prev) => {
+          const existingIdx = prev.findIndex(
+            (s) => s.assignment_id === submData.assignment_id && s.student_id === submData.student_id
+          );
+          if (existingIdx >= 0) {
+            const updated = [...prev];
+            updated[existingIdx] = newSubm;
+            return updated;
+          }
+          return [newSubm, ...prev];
+        });
+        // increment submitted_count
+        setAssignments((prev) =>
+          prev.map((a) =>
+            a.id === submData.assignment_id
+              ? { ...a, submitted_count: (a.submitted_count || 0) + 1 }
+              : a
+          )
+        );
+      }).catch(console.error);
     } else {
-      const newSubm: Submission = {
-        ...submData,
-        id: `subm-${Date.now()}`,
-        submitted_at: new Date().toISOString(),
-        status: isLate ? 'terlambat' : 'sudah_dikumpulkan',
-      };
-      updatedSubmissions = [newSubm, ...submissions];
+      const isLate = false;
+      const existingIndex = submissions.findIndex(
+        (s) => s.assignment_id === submData.assignment_id && s.student_id === submData.student_id
+      );
+      let updatedSubmissions: Submission[];
+      if (existingIndex >= 0) {
+        updatedSubmissions = [...submissions];
+        updatedSubmissions[existingIndex] = {
+          ...updatedSubmissions[existingIndex],
+          ...submData,
+          submitted_at: new Date().toISOString(),
+          status: isLate ? 'terlambat' : 'sudah_dikumpulkan',
+        };
+      } else {
+        const newSubm: Submission = {
+          ...submData,
+          id: `subm-${Date.now()}`,
+          submitted_at: new Date().toISOString(),
+          status: isLate ? 'terlambat' : 'sudah_dikumpulkan',
+        };
+        updatedSubmissions = [newSubm, ...submissions];
+      }
+      setSubmissions(updatedSubmissions);
+      saveState({ submissions: updatedSubmissions });
+      setAssignments((prev) =>
+        prev.map((a) =>
+          a.id === submData.assignment_id
+            ? { ...a, submitted_count: (a.submitted_count || 0) + 1 }
+            : a
+        )
+      );
     }
-
-    setSubmissions(updatedSubmissions);
-    saveState({ submissions: updatedSubmissions });
-
-    // increment submitted_count in assignment
-    setAssignments((prev) =>
-      prev.map((a) =>
-        a.id === submData.assignment_id
-          ? { ...a, submitted_count: (a.submitted_count || 0) + 1 }
-          : a
-      )
-    );
   };
 
   const gradeSubmission = (id: string, score: number, feedback: string, gradedBy: string) => {
     let studentId = '';
-    let assignmentId = '';
-
     setSubmissions((prev) => {
       const updated = prev.map((s) => {
         if (s.id === id) {
           studentId = s.student_id;
-          assignmentId = s.assignment_id;
-          return {
-            ...s,
-            score,
-            feedback,
-            graded_at: new Date().toISOString(),
-            graded_by: gradedBy,
-            status: 'sudah_dinilai' as const,
-          };
+          return { ...s, score, feedback, graded_at: new Date().toISOString(), graded_by: gradedBy, status: 'sudah_dinilai' as const };
         }
         return s;
       });
-      saveState({ submissions: updated });
+      if (isOnline) {
+        db.gradeSubmissionDb(id, score, feedback, gradedBy).catch(console.error);
+      } else {
+        saveState({ submissions: updated });
+      }
       return updated;
     });
 
-    // Update grade record if student exists
     if (studentId) {
-      const targetUser = users.find((u) => u.id === studentId);
-      if (targetUser) {
-        setGrades((prev) => {
-          const existing = prev.find((g) => g.student_id === studentId);
-          if (existing) {
-            const finalScore = Math.round((score * 0.4 + (existing.quiz_score || 80) * 0.3 + (existing.exam_score || 80) * 0.3) * 10) / 10;
-            const letter = finalScore >= 88 ? 'A' : finalScore >= 78 ? 'B' : finalScore >= 70 ? 'C' : 'D';
-            const updated = prev.map((g) =>
-              g.student_id === studentId
-                ? {
-                    ...g,
-                    assignment_score: score,
-                    final_score: finalScore,
-                    letter_grade: letter as any,
-                    status_ketuntasan: finalScore >= 75 ? ('Tuntas' as const) : ('Belum Tuntas' as const),
-                    updated_at: new Date().toISOString(),
-                  }
-                : g
-            );
+      setGrades((prev) => {
+        const existing = prev.find((g) => g.student_id === studentId);
+        if (existing) {
+          const finalScore = Math.round((score * 0.4 + (existing.quiz_score || 80) * 0.3 + (existing.exam_score || 80) * 0.3) * 10) / 10;
+          const letter = finalScore >= 88 ? 'A' : finalScore >= 78 ? 'B' : finalScore >= 70 ? 'C' : 'D';
+          const updated = prev.map((g) =>
+            g.student_id === studentId
+              ? { ...g, assignment_score: score, final_score: finalScore, letter_grade: letter as any, status_ketuntasan: finalScore >= 75 ? ('Tuntas' as const) : ('Belum Tuntas' as const), updated_at: new Date().toISOString() }
+              : g
+          );
+          if (isOnline) {
+            db.upsertGrade({ student_id: studentId, subject_id: existing.subject_id, assignment_score: score, final_score: finalScore }).catch(console.error);
+          } else {
             saveState({ grades: updated });
-            return updated;
           }
-          return prev;
-        });
-      }
+          return updated;
+        }
+        return prev;
+      });
     }
   };
 
+  // ── QUIZZES ───────────────────────────────────────────────────────────────
   const addQuiz = (quizData: Omit<Quiz, 'id' | 'created_at'>) => {
-    const newQuiz: Quiz = {
-      ...quizData,
-      id: `quiz-${Date.now()}`,
-      created_at: new Date().toISOString(),
-    };
-    setQuizzes((prev) => {
-      const updated = [newQuiz, ...prev];
-      saveState({ quizzes: updated });
-      return updated;
-    });
+    if (isOnline) {
+      db.insertQuiz(quizData).then((newQuiz) => {
+        setQuizzes((prev) => [newQuiz, ...prev]);
+      }).catch(console.error);
+    } else {
+      const newQuiz: Quiz = { ...quizData, id: `quiz-${Date.now()}`, created_at: new Date().toISOString() };
+      setQuizzes((prev) => {
+        const updated = [newQuiz, ...prev];
+        saveState({ quizzes: updated });
+        return updated;
+      });
+    }
   };
 
   const deleteQuiz = (id: string) => {
     setQuizzes((prev) => {
       const updated = prev.filter((q) => q.id !== id);
-      saveState({ quizzes: updated });
+      if (isOnline) {
+        db.deleteQuiz(id).catch(console.error);
+      } else {
+        saveState({ quizzes: updated });
+      }
       return updated;
     });
   };
 
+  // ── QUIZ ATTEMPTS ─────────────────────────────────────────────────────────
   const submitQuizAttempt = (attemptData: Omit<QuizAttempt, 'id' | 'completed_at'>): number => {
     const targetQuiz = quizzes.find((q) => q.id === attemptData.quiz_id);
     let calculatedScore = 0;
@@ -441,9 +640,7 @@ export function LmsProvider({ children }: { children: React.ReactNode }) {
     if (targetQuiz?.questions) {
       targetQuiz.questions.forEach((q) => {
         const studentAns = attemptData.answers[q.id];
-        if (studentAns && studentAns === q.correct_answer) {
-          calculatedScore += q.points;
-        }
+        if (studentAns && studentAns === q.correct_answer) calculatedScore += q.points;
       });
     }
 
@@ -462,11 +659,14 @@ export function LmsProvider({ children }: { children: React.ReactNode }) {
 
     setQuizAttempts((prev) => {
       const updated = [newAttempt, ...prev];
-      saveState({ quizAttempts: updated });
+      if (isOnline) {
+        db.insertQuizAttempt(newAttempt as any).catch(console.error);
+      } else {
+        saveState({ quizAttempts: updated });
+      }
       return updated;
     });
 
-    // Update grade record quiz score
     setGrades((prev) => {
       const updated = prev.map((g) => {
         if (g.student_id === attemptData.student_id) {
@@ -482,69 +682,92 @@ export function LmsProvider({ children }: { children: React.ReactNode }) {
         }
         return g;
       });
-      saveState({ grades: updated });
+      if (isOnline) {
+        const gradeRecord = updated.find((g) => g.student_id === attemptData.student_id);
+        if (gradeRecord) {
+          db.upsertGrade({ student_id: gradeRecord.student_id, subject_id: gradeRecord.subject_id, quiz_score: finalScore, final_score: gradeRecord.final_score }).catch(console.error);
+        }
+      } else {
+        saveState({ grades: updated });
+      }
       return updated;
     });
 
     return finalScore;
   };
 
+  // ── GRADES ────────────────────────────────────────────────────────────────
   const updateGrade = (id: string, updates: Partial<GradeRecord>) => {
     setGrades((prev) => {
       const updated = prev.map((g) => (g.id === id ? { ...g, ...updates, updated_at: new Date().toISOString() } : g));
-      saveState({ grades: updated });
+      if (isOnline) {
+        const grade = updated.find((g) => g.id === id);
+        if (grade) db.upsertGrade({ student_id: grade.student_id, subject_id: grade.subject_id, ...updates }).catch(console.error);
+      } else {
+        saveState({ grades: updated });
+      }
       return updated;
     });
   };
 
+  // ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────
   const addAnnouncement = (annData: Omit<Announcement, 'id' | 'created_at'>) => {
-    const newAnn: Announcement = {
-      ...annData,
-      id: `ann-${Date.now()}`,
-      created_at: new Date().toISOString(),
-    };
-    setAnnouncements((prev) => {
-      const updated = [newAnn, ...prev];
-      saveState({ announcements: updated });
-      return updated;
-    });
+    if (isOnline) {
+      db.insertAnnouncement(annData).then((newAnn) => {
+        setAnnouncements((prev) => [newAnn, ...prev]);
+      }).catch(console.error);
+    } else {
+      const newAnn: Announcement = { ...annData, id: `ann-${Date.now()}`, created_at: new Date().toISOString() };
+      setAnnouncements((prev) => {
+        const updated = [newAnn, ...prev];
+        saveState({ announcements: updated });
+        return updated;
+      });
+    }
   };
 
   const deleteAnnouncement = (id: string) => {
     setAnnouncements((prev) => {
       const updated = prev.filter((a) => a.id !== id);
-      saveState({ announcements: updated });
+      if (isOnline) {
+        db.deleteAnnouncement(id).catch(console.error);
+      } else {
+        saveState({ announcements: updated });
+      }
       return updated;
     });
   };
 
+  // ── LEARNING PROGRESS ─────────────────────────────────────────────────────
   const toggleMaterialCompleted = (materialId: string, studentId: string) => {
     setLearningProgress((prev) => {
       const exists = prev.find((lp) => lp.material_id === materialId && lp.student_id === studentId);
       let updated: LearningProgress[];
+      const newCompleted = exists ? !exists.is_completed : true;
+
       if (exists) {
         updated = prev.map((lp) =>
           lp.id === exists.id
-            ? { ...lp, is_completed: !lp.is_completed, completed_at: !lp.is_completed ? new Date().toISOString() : undefined }
+            ? { ...lp, is_completed: newCompleted, completed_at: newCompleted ? new Date().toISOString() : undefined }
             : lp
         );
       } else {
         updated = [
           ...prev,
-          {
-            id: `lp-${Date.now()}`,
-            material_id: materialId,
-            student_id: studentId,
-            is_completed: true,
-            completed_at: new Date().toISOString(),
-          },
+          { id: `lp-${Date.now()}`, material_id: materialId, student_id: studentId, is_completed: true, completed_at: new Date().toISOString() },
         ];
       }
-      saveState({ learningProgress: updated });
+
+      if (isOnline) {
+        db.upsertLearningProgress(studentId, materialId, newCompleted).catch(console.error);
+      } else {
+        saveState({ learningProgress: updated });
+      }
       return updated;
     });
   };
 
+  // ── RESET ─────────────────────────────────────────────────────────────────
   const resetAllData = () => {
     localStorage.removeItem(STORAGE_KEY);
     setSchoolSettings(INITIAL_SCHOOL_SETTINGS);
@@ -565,7 +788,7 @@ export function LmsProvider({ children }: { children: React.ReactNode }) {
     <LmsContext.Provider
       value={{
         currentUser,
-        setCurrentUser,
+        setCurrentUser: handleSetCurrentUser,
         switchRole,
         schoolSettings,
         updateSchoolSettings,
@@ -573,6 +796,7 @@ export function LmsProvider({ children }: { children: React.ReactNode }) {
         addUser,
         updateUser,
         deleteUser,
+        changePassword,
         departments,
         classes,
         addClass,
@@ -606,6 +830,8 @@ export function LmsProvider({ children }: { children: React.ReactNode }) {
         learningProgress,
         toggleMaterialCompleted,
         resetAllData,
+        isLoading,
+        isOnline,
       }}
     >
       {children}

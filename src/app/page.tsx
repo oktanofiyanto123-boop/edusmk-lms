@@ -25,6 +25,8 @@ import {
   Video,
   FileCheck,
   BarChart3,
+  Shield,
+  UserCheck,
 } from 'lucide-react';
 import { RoleSwitchBanner } from '@/components/layout/RoleSwitchBanner';
 import { useLms } from '@/lib/store';
@@ -37,7 +39,7 @@ export default function LandingPage() {
       <RoleSwitchBanner />
 
       {/* Main Navigation */}
-      <header className="sticky top-8 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-600/30">
@@ -116,25 +118,25 @@ export default function LandingPage() {
 
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
                 <Link
-                  href="/siswa"
-                  className="px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all hover:scale-[1.02]"
+                  href="/login"
+                  className="px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all hover:scale-[1.02]"
                 >
-                  <Laptop className="w-4 h-4" />
-                  <span>Akses Dashboard Siswa</span>
+                  <UserCheck className="w-4 h-4" />
+                  <span>Masuk sebagai Siswa</span>
                 </Link>
                 <Link
-                  href="/guru"
-                  className="px-6 py-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700 font-semibold text-sm flex items-center gap-2 transition-all hover:scale-[1.02]"
+                  href="/login"
+                  className="px-6 py-3.5 rounded-xl bg-emerald-700/80 hover:bg-emerald-600/80 text-white border border-emerald-600/50 font-semibold text-sm flex items-center gap-2 transition-all hover:scale-[1.02]"
                 >
-                  <Users className="w-4 h-4" />
-                  <span>Portal Dewan Guru</span>
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Masuk sebagai Guru</span>
                 </Link>
                 <Link
-                  href="/admin"
+                  href="/login"
                   className="px-6 py-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700 font-semibold text-sm flex items-center gap-2 transition-all hover:scale-[1.02]"
                 >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Admin Sekolah</span>
+                  <Shield className="w-4 h-4" />
+                  <span>Masuk sebagai Admin</span>
                 </Link>
               </div>
 
@@ -384,15 +386,17 @@ export default function LandingPage() {
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
             <Link
               href="/login"
-              className="px-8 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-600/30 transition-all hover:scale-105"
+              className="px-8 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-600/30 transition-all hover:scale-105 flex items-center gap-2"
             >
-              Masuk ke Portal LMS
+              <UserCheck className="w-4 h-4" />
+              Masuk — Siswa
             </Link>
             <Link
-              href="/siswa"
-              className="px-8 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-sm border border-white/20 transition-all"
+              href="/login"
+              className="px-8 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-sm border border-white/20 transition-all flex items-center gap-2"
             >
-              Uji Coba Demo Siswa
+              <Shield className="w-4 h-4" />
+              Masuk — Guru / Admin
             </Link>
           </div>
         </div>
@@ -417,12 +421,11 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-2">
-            <p className="text-white font-semibold text-sm">Navigasi Cepat</p>
+            <p className="text-white font-semibold text-sm">Akses Portal</p>
             <ul className="space-y-1.5">
-              <li><Link href="/admin" className="hover:text-blue-400 transition-colors">Portal Admin Sekolah</Link></li>
-              <li><Link href="/guru" className="hover:text-blue-400 transition-colors">Portal Dewan Guru</Link></li>
-              <li><Link href="/siswa" className="hover:text-blue-400 transition-colors">Portal Siswa</Link></li>
-              <li><Link href="/login" className="hover:text-blue-400 transition-colors">Autentikasi & Login</Link></li>
+              <li><Link href="/login" className="hover:text-indigo-400 transition-colors">Login Siswa</Link></li>
+              <li><Link href="/login" className="hover:text-emerald-400 transition-colors">Login Guru</Link></li>
+              <li><Link href="/login" className="hover:text-blue-400 transition-colors">Login Admin</Link></li>
             </ul>
           </div>
 

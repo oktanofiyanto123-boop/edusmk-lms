@@ -53,7 +53,7 @@ export default function SiswaDashboardPage() {
     >
       <div className="space-y-6">
         {/* Banner Motivasi Belajar */}
-        <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-xl relative overflow-hidden">
+        <div className="p-4 sm:p-6 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-xl relative overflow-hidden">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-2">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 text-[11px] font-medium">

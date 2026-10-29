@@ -5,6 +5,7 @@ import { useLms } from '@/lib/store';
 import { Menu, Bell, Search, User, Shield, CheckCircle, Clock } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 import Link from 'next/link';
+import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -22,23 +23,23 @@ export function DashboardHeader({ onMenuToggle, title, subtitle }: HeaderProps) 
   );
 
   return (
-    <header className="sticky top-8 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 transition-all">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <button
           onClick={onMenuToggle}
-          className="lg:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-hidden"
+          className="lg:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-hidden touch-manipulation shrink-0"
           aria-label="Toggle Navigation Menu"
         >
           <Menu className="w-5 h-5" />
         </button>
 
         {title && (
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
+          <div className="min-w-0">
+            <h1 className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">
               {title}
             </h1>
             {subtitle && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hidden sm:block truncate">
                 {subtitle}
               </p>
             )}
@@ -47,6 +48,9 @@ export function DashboardHeader({ onMenuToggle, title, subtitle }: HeaderProps) 
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Status koneksi Supabase */}
+        <ConnectionStatus />
+
         {/* Search input desktop */}
         <div className="relative hidden md:block w-56 lg:w-72">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -71,7 +75,7 @@ export function DashboardHeader({ onMenuToggle, title, subtitle }: HeaderProps) 
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl py-2 z-50">
+            <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-sm sm:w-96 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl py-2 z-50">
               <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <span className="font-semibold text-xs text-slate-900 dark:text-white">
                   Pengumuman Terbaru ({relevantAnnouncements.length})

@@ -25,6 +25,7 @@ import {
   Shield,
   Layers,
   FileCheck,
+  X,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -100,22 +101,29 @@ export function DashboardSidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* Brand Header */}
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+          <Link href="/" className="flex items-center gap-3 group min-w-0" onClick={() => { if (window.innerWidth < 1024) onClose(); }}>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform shrink-0">
               <GraduationCap className="w-6 h-6" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-base tracking-tight text-white">EduSMK</span>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
                   LMS
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 truncate max-w-[140px]">
+              <p className="text-[11px] text-slate-400 truncate max-w-[130px]">
                 {schoolSettings.school_name}
               </p>
             </div>
           </Link>
+          <button
+            onClick={onClose}
+            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors touch-manipulation"
+            aria-label="Tutup Menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* User Card Mini */}

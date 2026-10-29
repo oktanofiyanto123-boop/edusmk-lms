@@ -4,10 +4,11 @@ export type UserStatus = 'aktif' | 'nonaktif';
 
 export interface UserProfile {
   id: string;
-  email: string;
+  email?: string;          // Opsional; tidak dipakai untuk akun siswa
   full_name: string;
   role: UserRole;
   nisn_nip: string;
+  password?: string;       // Disimpan plain-text untuk mock; wajib saat pendaftaran
   phone?: string;
   avatar_url?: string;
   department_id?: string;

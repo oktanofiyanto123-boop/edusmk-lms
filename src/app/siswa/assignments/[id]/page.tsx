@@ -484,7 +484,7 @@ function AssignmentDetailContent() {
                 </div>
                 <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                   Tarik & Letakkan Berkas Tugas di sini, atau{' '}
-                  <span className="text-blue-600 dark:text-blue-400 underline">Pilih Berkas dari Komputer</span>
+                  <span className="text-blue-600 dark:text-blue-400 underline">Sentuh / Pilih Berkas dari HP atau Komputer</span>
                 </p>
                 <p className="text-[11px] text-slate-400 mt-1">
                   Bebas mengunggah berkas apa pun: <strong>.zip, .rar, .pdf, .docx, .pptx, .xlsx, .c, .cpp, .ino, .py, .png, .jpg</strong> tanpa batasan tipe file.

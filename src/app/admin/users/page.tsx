@@ -16,6 +16,8 @@ import {
   GraduationCap,
   UserCheck,
   X,
+  AlertCircle,
+  Lock,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
@@ -30,17 +32,19 @@ export default function AdminUsersPage() {
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
+    password: '',
     role: 'siswa' as UserRole,
     nisn_nip: '',
     phone: '',
     department_id: '',
     class_id: '',
   });
+  const [formError, setFormError] = useState<string | null>(null);
 
   const filteredUsers = users.filter((u) => {
     const matchSearch =
       u.full_name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
+      (u.email && u.email.toLowerCase().includes(search.toLowerCase())) ||
       u.nisn_nip.includes(search);
     const matchRole = roleFilter === 'all' || u.role === roleFilter;
     return matchSearch && matchRole;
@@ -48,14 +52,38 @@ export default function AdminUsersPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.full_name || !formData.email) return;
+    setFormError(null);
+
+    if (!formData.full_name.trim()) return;
+
+    // Untuk siswa: nama wajib unik (1 akun per siswa), email tidak diperlukan, password wajib
+    if (formData.role === 'siswa') {
+      const namaExist = users.find(
+        (u) => u.role === 'siswa' && u.full_name.toLowerCase().trim() === formData.full_name.toLowerCase().trim()
+      );
+      if (namaExist) {
+        setFormError(`Siswa dengan nama "${formData.full_name}" sudah memiliki akun. Satu siswa hanya boleh memiliki 1 akun.`);
+        return;
+      }
+      if (!formData.password.trim()) {
+        setFormError('Kata sandi wajib diisi untuk akun siswa.');
+        return;
+      }
+    } else {
+      // Untuk guru/admin: email wajib
+      if (!formData.email.trim()) {
+        setFormError('Email wajib diisi untuk akun guru / administrator.');
+        return;
+      }
+    }
 
     const selectedDept = departments.find((d) => d.id === formData.department_id);
     const selectedClass = classes.find((c) => c.id === formData.class_id);
 
     addUser({
       full_name: formData.full_name,
-      email: formData.email,
+      email: formData.role === 'siswa' ? undefined : formData.email,
+      password: formData.role === 'siswa' ? formData.password : undefined,
       role: formData.role,
       nisn_nip: formData.nisn_nip,
       phone: formData.phone,
@@ -68,9 +96,11 @@ export default function AdminUsersPage() {
     });
 
     setIsModalOpen(false);
+    setFormError(null);
     setFormData({
       full_name: '',
       email: '',
+      password: '',
       role: 'siswa',
       nisn_nip: '',
       phone: '',
@@ -161,7 +191,11 @@ export default function AdminUsersPage() {
                         />
                         <div>
                           <p className="font-semibold text-slate-900 dark:text-white">{user.full_name}</p>
-                          <p className="text-[11px] text-slate-400">{user.email}</p>
+                          {user.role === 'siswa' ? (
+                            <p className="text-[11px] text-indigo-500 dark:text-indigo-400">Login: nama + kata sandi</p>
+                          ) : (
+                            <p className="text-[11px] text-slate-400">{user.email}</p>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -219,8 +253,8 @@ export default function AdminUsersPage() {
 
         {/* Modal Tambah Pengguna */}
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 max-h-[92vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <h3 className="font-bold text-sm text-slate-900 dark:text-white">
                   Tambah Akun Pengguna Baru
@@ -234,13 +268,21 @@ export default function AdminUsersPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+                {/* Error */}
+                {formError && (
+                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 flex items-start gap-2 text-rose-700 dark:text-rose-300 text-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Peran Pengguna (Role)
                   </label>
                   <select
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole, email: '', password: '' })}
                     className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                   >
                     <option value="siswa">Siswa (Peserta Didik)</option>
@@ -251,44 +293,72 @@ export default function AdminUsersPage() {
 
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Nama Lengkap Beserta Gelar
+                    Nama Lengkap {formData.role !== 'siswa' && 'Beserta Gelar'}
+                    <span className="text-rose-500 ml-0.5">*</span>
                   </label>
                   <input
                     type="text"
                     required
                     value={formData.full_name}
-                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                    placeholder="Contoh: Muhammad Fauzan atau Ir. H. Sudirman, M.Kom."
+                    onChange={(e) => { setFormData({ ...formData, full_name: e.target.value }); setFormError(null); }}
+                    placeholder={formData.role === 'siswa' ? 'Contoh: Ahmad Rizky Pratama' : 'Contoh: Ir. H. Sudirman, M.Kom.'}
                     className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                   />
+                  {formData.role === 'siswa' && (
+                    <p className="mt-1 text-[10px] text-slate-400">Nama ini akan digunakan sebagai identitas login siswa. Pastikan nama unik dan tidak ada duplikasi.</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Email hanya untuk guru/admin */}
+                  {formData.role !== 'siswa' && (
+                    <div>
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Email Akun <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        placeholder="user@edusmk.sch.id"
+                        className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Email Akun
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="user@edusmk.sch.id"
-                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      NISN atau NIP
+                      {formData.role === 'siswa' ? 'NISN' : 'NIP'}
                     </label>
                     <input
                       type="text"
                       value={formData.nisn_nip}
                       onChange={(e) => setFormData({ ...formData, nisn_nip: e.target.value })}
-                      placeholder="0067823415"
+                      placeholder={formData.role === 'siswa' ? '0067823415' : '198503152010011015'}
                       className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                     />
                   </div>
+                </div>
+
+                {/* Password — wajib untuk siswa */}
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Kata Sandi {formData.role === 'siswa' && <span className="text-rose-500">*</span>}
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      required={formData.role === 'siswa'}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder={formData.role === 'siswa' ? 'Buat kata sandi untuk siswa ini' : 'Kosongkan untuk password default'}
+                      className="w-full p-2.5 pl-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  {formData.role === 'siswa' && (
+                    <p className="mt-1 text-[10px] text-slate-400">Siswa menggunakan nama lengkap + kata sandi ini untuk masuk. Beritahukan kata sandi kepada siswa secara langsung.</p>
+                  )}
                 </div>
 
                 {formData.role === 'siswa' && (
@@ -314,7 +384,7 @@ export default function AdminUsersPage() {
                 <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
                   <button
                     type="button"
-                    onClick={() => setIsModalOpen(false)}
+                    onClick={() => { setIsModalOpen(false); setFormError(null); }}
                     className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50"
                   >
                     Batal
